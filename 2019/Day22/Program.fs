@@ -45,7 +45,7 @@ let main argv =
     
     // part 1
 
-    doShuffle input (bigint 10007L) (bigint 2019L)
+    doShuffle input (bigint 10007L) (bigint 2019L) |> printfn "Part1: %A"
 
     // part 2
     let deckSize = bigint 119315717514047L
@@ -54,7 +54,7 @@ let main argv =
 
     
     // check
-    calc deckSize (bigint 32376123569821L) fsh
+    calc deckSize (bigint 32376123569821L) fsh |> printfn "Part2: %A"
 
     0 // return an integer exit code
 

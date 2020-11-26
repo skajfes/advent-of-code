@@ -130,8 +130,8 @@ let maxForLoss p1 boss =
     
 [<EntryPoint>]
 let main argv =
-    let p1 = { newPlayer "Player" with HitPoints = 100; Damage = 0; Armor = 0 }
-    let boss = { newPlayer "Boss" with HitPoints = 100; Damage = 8; Armor = 2 }
+    let p1 = newPlayer "Player" 
+    let boss = { newPlayer "Boss" with Damage = 8; Armor = 2 }
     
     minForWin p1 boss |> printfn "Part1: min gold for win: %A"
     maxForLoss p1 boss |> printfn "Part2: max gold for loss: %A"
