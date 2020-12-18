@@ -1,0 +1,16 @@
+let testInput = 
+    """"""
+
+let parse (input: string) = 
+    input
+
+[<EntryPoint>]
+let main argv =
+    // let input = System.IO.File.ReadAllText("input.txt")
+    
+    testInput |> parse |> printfn "%A"
+    
+    // input |> parse |> part1 |> printfn "Part 1: %A"
+    // input |> parse |> part2 |> printfn "Part 2: %A"
+
+    0 // return an integer exit code

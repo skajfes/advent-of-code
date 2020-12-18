@@ -16,6 +16,9 @@ pushd $Year
 $p = "Day$($Day.ToString("00"))"
 dotnet new console -lang "F#" -o $p
 dotnet sln add $p/$p.fsproj
+
 popd
+
+cp Program.fs.template $Year/$p/Program.fs
 
 popd
