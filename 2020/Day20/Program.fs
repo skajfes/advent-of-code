@@ -1,5 +1,7 @@
-open System.Collections.Generic
-let testInput = System.IO.File.ReadAllText("sample.txt")
+open System.Diagnostics
+open System.IO
+
+let testInput = File.ReadAllText("sample.txt")
 
 type Matrix<'a> = 'a [] []
 type Tile = int * Matrix<char>
@@ -13,40 +15,40 @@ let parse (input: string) =
          (Seq.map (Seq.toArray) >> Seq.toArray) tiles) )
     |> Seq.toList
 
-let rotateI (data:char [][]) =
+
+let rotate (data:char [][]) =
     let d = Array.length data
     [| for i in 0 .. d - 1 -> [| for j in 0 .. d - 1 -> data.[d - 1 - j].[i] |] |]
-let flipI (data: char [][]) =
+let flip (data: char [][]) =
     let d = Array.length data
     [| for i in 0 .. d - 1 -> [| for j in 0 .. d - 1 -> data.[i].[d - 1 - j] |] |]
 
 let allImagePositions image =
-    [ image
-      image |> rotateI
-      image |> rotateI |> rotateI
-      image |> rotateI |> rotateI |> rotateI
-      image |> flipI
-      image |> flipI |> rotateI
-      image |> flipI |> rotateI |> rotateI
-      image |> flipI |> rotateI |> rotateI |> rotateI ]
+    [id; rotate; rotate; rotate; flip ; rotate; rotate; rotate]
+    |> Seq.mapFold (fun image f ->
+        let i = f image
+        i, i) image
+    |> fst
+
 let allPositions tile =
     let id, data = tile
     allImagePositions data
-    |> List.map (fun d -> id, d)
+    |> Seq.map (fun d -> id, d)
+    |> Seq.toList
 
-let rightEdge ((id, data): Tile) =
+let rightEdge ((_, data): Tile) =
     let d = Array.length data - 1
     [| for i in 0 .. d -> data.[i].[d] |]
 
-let leftEdge ((id, data): Tile) =
+let leftEdge ((_, data): Tile) =
     let d = Array.length data - 1
     [| for i in 0 .. d -> data.[i].[0] |]
 
-let topEdge ((id, data): Tile) =
+let topEdge ((_, data): Tile) =
     let d = Array.length data - 1
     [| for i in 0 .. d -> data.[0].[i] |]
 
-let bottomEdge ((id, data): Tile) =
+let bottomEdge ((_, data): Tile) =
     let d = Array.length data - 1
     [| for i in 0 .. d -> data.[d].[i] |]
 
@@ -57,13 +59,9 @@ let assembleImage tiles =
     let findNextTile filter image tiles =
         let matchingTile = 
             tiles
-            |> List.map (allPositions)
-            |> List.map (List.filter filter)
-            |> List.tryFind (List.length >> (<) 0)
-            |> function
-               | Some t -> List.head t |> Some
-               | None -> None
-            
+            |> List.filter filter
+            |> List.tryHead
+
         match matchingTile with
         | Some t -> image, Some t, tiles |> List.filter (equals t >> not)
         | None -> image, None, tiles
@@ -98,6 +96,10 @@ let assembleImage tiles =
         
     let tile::tiles = tiles
     let image = [ ((0, 0), tile) ]
+    let tiles =
+        tiles
+        |> List.map allPositions
+        |> List.concat
     
     findEdges image tiles |> fst
    
@@ -160,16 +162,14 @@ let flatten image =
     |> Seq.toList
     
 let monster =
-    """                  # 
-#    ##    ##    ###
- #  #  #  #  #  #   """.Split("\r\n")
- |> flatten
- |> List.map (fun (i,j) -> i-1,j) // normalize so monster as a field on (0,0)
+    File.ReadAllLines("monster.txt")
+    |> flatten
+    |> List.map (fun (i,j) -> i-1,j) // normalize so monster as a field on (0,0)
          
 let findMonster (image: char[][])=
     allImagePositions image
-    |> List.map flatten
-    |> List.map (fun image ->
+    |> Seq.map flatten
+    |> Seq.map (fun image ->
         image
         |> List.map (fun (i, j) ->
               monster
@@ -177,7 +177,8 @@ let findMonster (image: char[][])=
               |> List.forall(fun m -> image |> List.exists ((=) m)))
         |> List.filter ((=)true)
         |> List.length)
-    |> List.sum
+    |> Seq.filter ((<)0)
+    |> Seq.head
 
 let measureWaters image =
     let m = findMonster image
@@ -191,11 +192,25 @@ let measureWaters image =
 
 [<EntryPoint>]
 let main argv =
-    let input = System.IO.File.ReadAllText("input.txt")
+    let input = File.ReadAllText("input.txt")
+    let sw = Stopwatch.StartNew()
 
     let image = (parse >> assembleImage) input
-        
+    let t_parse = sw.ElapsedMilliseconds
+    sw.Restart()
+
     image |> multiplyCorners |> printfn "Part 1: %d"
-    image |> join |> measureWaters |> printfn "Part 2: %d"
+    let t_part1 = sw.ElapsedMilliseconds
+    sw.Restart()
+
+    let joined = join image
+    let t_part2_1 = sw.ElapsedMilliseconds
+    sw.Restart()
+
+    joined |> measureWaters |> printfn "Part 2: %A"
+    let t_part2 = sw.ElapsedMilliseconds
+    sw.Stop()
+
+    printfn "Elapsed parse: %d\tpart1: %d\tpart2: %d %d" t_parse t_part1 t_part2_1 t_part2
 
     0 // return an integer exit code
