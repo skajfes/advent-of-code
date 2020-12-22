@@ -1,3 +1,4 @@
+open System
 open System.Diagnostics
 open System.IO
 
@@ -53,6 +54,33 @@ let bottomEdge ((_, data): Tile) =
     [| for i in 0 .. d -> data.[d].[i] |]
 
 let equals ((a, _):Tile) ((b, _):Tile) = a = b
+let addRight (x, y) = (x, y + 1)
+let addLeft (x, y) = (x, y - 1)
+let addTop (x, y) = (x - 1, y)
+let addBottom (x, y) = (x + 1, y)
+
+let show (image: ((int*int)*Tile) list) =
+    let xs = image |> List.map (fst >> fst)
+    let ys = image |> List.map (fst >> snd)
+    let minx = List.min xs
+    let maxx = List.max xs
+    let miny = List.min ys
+    let maxy = List.max ys
+
+    Console.SetCursorPosition(0, 0)
+
+    let d = image |> List.head |> snd |> snd |> Array.length
+
+    [| for x in 0 .. (maxx - minx + 1) * d - 1 ->
+        [| for y in 0 .. (maxy - miny + 1) * d - 1 ->
+            match image
+                  |> List.tryFind (fst >> (=) (x / d + minx, y / d + miny)) with
+            | Some (_, tile) -> (snd tile).[x % d].[y % d] |> string
+            | None -> " " |]
+        |> String.concat "" |]
+    |> String.concat "\n"
+    |> printfn "%s"
+
 
 let assembleImage tiles =
 
@@ -68,14 +96,12 @@ let assembleImage tiles =
 
     let addToImage dir (image: ((int*int)*Tile) list) (tile: Tile option) (rest: Tile list) =
         match tile with
-        | Some t -> (dir, t) :: image, rest
+        | Some t ->
+            let image = (dir, t) :: image
+            show image
+            image, rest
         | None -> image, rest
-    
-    let addRight (x, y) = (x, y + 1)
-    let addLeft (x, y) = (x, y - 1)
-    let addTop (x, y) = (x - 1, y)
-    let addBottom (x, y) = (x + 1, y)
-    
+
     let rec findEdges image tiles =
         let findAndAdd filter dir image tiles =
             let (_, mTile, tiles) = findNextTile filter image tiles
@@ -86,15 +112,18 @@ let assembleImage tiles =
             | None -> (image, tiles)
             
         let (coord, tile) = List.head image
-        // printfn "findEdges %A %A" coord (List.length tiles)
-            
+
         (image, tiles)
         ||> findAndAdd (leftEdge >> (=) (rightEdge tile)) (addRight coord)
-        ||> findAndAdd (rightEdge >> (=) (leftEdge tile)) (addLeft coord)
         ||> findAndAdd (topEdge >> (=) (bottomEdge tile)) (addBottom coord)
+        ||> findAndAdd (rightEdge >> (=) (leftEdge tile)) (addLeft coord)
         ||> findAndAdd (bottomEdge >> (=) (topEdge tile)) (addTop coord)
-        
-    let tile::tiles = tiles
+
+    let rndIdx = Random().Next(List.length tiles)
+    let tile = List.item rndIdx tiles
+    let tiles = List.filter (equals tile >> not) tiles
+
+    // let tile::tiles = tiles
     let image = [ ((0, 0), tile) ]
     let tiles =
         tiles
@@ -211,6 +240,6 @@ let main argv =
     let t_part2 = sw.ElapsedMilliseconds
     sw.Stop()
 
-    printfn "Elapsed parse: %d\tpart1: %d\tpart2: %d %d" t_parse t_part1 t_part2_1 t_part2
+    printfn "Elapsed assemble: %d\tpart1: %d\tpart2: %d %d" t_parse t_part1 t_part2_1 t_part2
 
     0 // return an integer exit code
