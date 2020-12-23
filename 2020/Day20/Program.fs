@@ -4,54 +4,41 @@ open System.IO
 
 let testInput = File.ReadAllText("sample.txt")
 
-type Matrix<'a> = 'a [] []
-type Tile = int * Matrix<char>
+type Tile = int * char[,]
 
 let parse (input: string) =
     input.Split("\r\n\r\n")
     |> Seq.filter ((<>)"")
     |> Seq.map (fun input ->
-        let id :: tiles = input.Split("\r\n") |> Array.toList
-        (id.Replace("Tile ", "").Replace(":", "") |> int,
-         (Seq.map (Seq.toArray) >> Seq.toArray) tiles) )
+        let data = input.Split("\r\n")
+        (data.[0].Replace("Tile ", "").Replace(":", "") |> int,
+          array2D data.[1..]) )
     |> Seq.toList
 
 
-let rotate (data:char [][]) =
-    let d = Array.length data
-    [| for i in 0 .. d - 1 -> [| for j in 0 .. d - 1 -> data.[d - 1 - j].[i] |] |]
-let flip (data: char [][]) =
-    let d = Array.length data
-    [| for i in 0 .. d - 1 -> [| for j in 0 .. d - 1 -> data.[i].[d - 1 - j] |] |]
+let rotate (data: 'a [,]) =
+    Array2D.mapi (fun i j _ -> data.[^j, i]) data
+
+let flip (data: 'a [,]) =
+    Array2D.mapi (fun i j _ -> data.[i, ^j]) data
 
 let allImagePositions image =
-    [id; rotate; rotate; rotate; flip ; rotate; rotate; rotate]
+    [id; rotate; rotate; rotate; flip; rotate; rotate; rotate]
     |> Seq.mapFold (fun image f ->
         let i = f image
         i, i) image
     |> fst
 
-let allPositions tile =
+let allPositions (tile: Tile): Tile list =
     let id, data = tile
     allImagePositions data
     |> Seq.map (fun d -> id, d)
     |> Seq.toList
 
-let rightEdge ((_, data): Tile) =
-    let d = Array.length data - 1
-    [| for i in 0 .. d -> data.[i].[d] |]
-
-let leftEdge ((_, data): Tile) =
-    let d = Array.length data - 1
-    [| for i in 0 .. d -> data.[i].[0] |]
-
-let topEdge ((_, data): Tile) =
-    let d = Array.length data - 1
-    [| for i in 0 .. d -> data.[0].[i] |]
-
-let bottomEdge ((_, data): Tile) =
-    let d = Array.length data - 1
-    [| for i in 0 .. d -> data.[d].[i] |]
+let rightEdge ((_, data): Tile) = data.[*, ^0]
+let leftEdge ((_, data): Tile) = data.[*, 0]
+let topEdge ((_, data): Tile) = data.[0, *]
+let bottomEdge ((_, data): Tile) = data.[^0, *]
 
 let equals ((a, _):Tile) ((b, _):Tile) = a = b
 let addRight (x, y) = (x, y + 1)
@@ -68,21 +55,33 @@ let show (image: ((int*int)*Tile) list) =
     let maxy = List.max ys
 
     Console.SetCursorPosition(0, 0)
+    // printfn "\n\n"
 
-    let d = image |> List.head |> snd |> snd |> Array.length
+    let d = image |> List.head |> snd |> snd |> Array2D.length1
 
     [| for x in 0 .. (maxx - minx + 1) * d - 1 ->
         [| for y in 0 .. (maxy - miny + 1) * d - 1 ->
-            match image
-                  |> List.tryFind (fst >> (=) (x / d + minx, y / d + miny)) with
-            | Some (_, tile) -> (snd tile).[x % d].[y % d] |> string
+            match image |> List.tryFind (fst >> (=) (x / d + minx, y / d + miny)) with
+            | Some (_, (_, tile)) -> tile.[x % d, y % d] |> string
             | None -> " " |]
         |> String.concat "" |]
     |> String.concat "\n"
     |> printfn "%s"
 
+let foldi (folder: int -> int -> 'S -> 'T -> 'S) (state: 'S) (array: 'T[,]) =
+    let mutable state = state
+    for x in 0 .. Array2D.length1 array - 1 do
+        for y in 0 .. Array2D.length2 array - 1 do
+            state <- folder x y state (array.[x, y])
+    state
 
-let assembleImage tiles =
+let show' (image: char[,]) =
+    [|0..image.GetLength(0)-1|]
+    |> Array.map (fun i -> image.[i, *] |> Array.map string |> String.concat "" )
+    |> String.concat "\n"
+    |> printfn "%s\n"
+
+let assembleImage (tiles: Tile list) =
 
     let findNextTile filter image tiles =
         let matchingTile = 
@@ -98,7 +97,7 @@ let assembleImage tiles =
         match tile with
         | Some t ->
             let image = (dir, t) :: image
-            show image
+            // show image
             image, rest
         | None -> image, rest
 
@@ -115,15 +114,15 @@ let assembleImage tiles =
 
         (image, tiles)
         ||> findAndAdd (leftEdge >> (=) (rightEdge tile)) (addRight coord)
-        ||> findAndAdd (topEdge >> (=) (bottomEdge tile)) (addBottom coord)
         ||> findAndAdd (rightEdge >> (=) (leftEdge tile)) (addLeft coord)
+        ||> findAndAdd (topEdge >> (=) (bottomEdge tile)) (addBottom coord)
         ||> findAndAdd (bottomEdge >> (=) (topEdge tile)) (addTop coord)
 
     let rndIdx = Random().Next(List.length tiles)
     let tile = List.item rndIdx tiles
     let tiles = List.filter (equals tile >> not) tiles
-
     // let tile::tiles = tiles
+
     let image = [ ((0, 0), tile) ]
     let tiles =
         tiles
@@ -133,6 +132,7 @@ let assembleImage tiles =
     findEdges image tiles |> fst
    
 let multiplyCorners image =
+
     let xs = image |> List.map (fst >> fst)
     let ys = image |> List.map (fst >> snd)
     let minx = List.min xs
@@ -140,23 +140,15 @@ let multiplyCorners image =
     let miny = List.min ys
     let maxy = List.max ys
     
-    [(minx, miny);(minx, maxy); (maxx, miny); (maxx, maxy)]
+    [(minx, miny); (minx, maxy); (maxx, miny); (maxx, maxy)]
     |> List.map (fun x -> image |> (List.find (fst >> (=) x) >> snd >> fst >> int64))
     |> List.fold (*) 1L
 
-let removeBorder tile =
+let removeBorder (tile: (int * int) *Tile) =
     let (coord, (id, data)) = tile
-    
-    let d = Array.length data
-    let data = 
-        data
-        |> Array.skip 1
-        |> Array.take (d-2)
-        |> Array.map (
-            Array.skip 1 >> Array.take (d-2))
-    
+    let data = data.[1..^1, 1..^1]
     (coord, (id, data))
-    
+
 let join (image: ((int*int)*Tile) list) =
     let xs = image |> List.map (fst >> fst)
     let ys = image |> List.map (fst >> snd)
@@ -164,38 +156,41 @@ let join (image: ((int*int)*Tile) list) =
     let maxx = List.max xs
     let miny = List.min ys
     let maxy = List.max ys
-    
+
     let image = image |> List.map (removeBorder)
 
-    let d = image |> List.head |> snd |> snd |> Array.length
-    [| for x in 0..(maxx-minx+1)*d - 1 ->
-       [| for y in 0..(maxy-miny+1)*d - 1 ->
-             let tilex = (x/d + minx, y/d + miny)
-             let tile = image |> List.find (fst >> (=)tilex) |> snd
-             (snd tile).[x%d].[y%d] |] |]
-             
+    let d = image |> List.head |> snd |> snd |> Array2D.length1
+    let dim = (maxx - minx) + 1
+
+    let img = Array2D.create ((dim) * d) ((dim) * d) '.'
+
+    image
+    |> List.iter (fun ((x, y), tile) ->
+        let x = x - minx
+        let y = y - miny
+        img.[x * d..x * d + d - 1, y * d..y * d + d - 1] <- snd tile)
+    img
+
 let printImage image =
     image
     |> Seq.fold (fun out row ->
         Seq.map (string) row
-        |> System.String.Concat
+        |> String.Concat
         |> fun s -> out + s + "\n") "" 
     |> printfn "%s"
-             
-let flatten image =
+
+
+let flatten (image: char[,])=
     image
-    |> Seq.mapi (fun i -> Seq.mapi (fun j c -> (i, j), c))
-    |> Seq.concat
-    |> Seq.filter (snd >> (=)'#')
-    |> Seq.map fst
-    |> Seq.toList
-    
+    |> foldi (fun i j list c -> if c = '#' then (i, j)::list else list) []
+
 let monster =
     File.ReadAllLines("monster.txt")
+    |> array2D
     |> flatten
-    |> List.map (fun (i,j) -> i-1,j) // normalize so monster as a field on (0,0)
+    |> List.map (fun (i,j) -> i - 1, j) // normalize so monster as a field on (0,0)
          
-let findMonster (image: char[][])=
+let findMonster (image: char[,])=
     allImagePositions image
     |> Seq.map flatten
     |> Seq.map (fun image ->
@@ -212,11 +207,8 @@ let findMonster (image: char[][])=
 let measureWaters image =
     let m = findMonster image
     image
-    |> Array.concat
-    |> Array.map (function
-        |'#' -> 1
-        | _ -> 0)
-    |> Array.sum
+    |> flatten
+    |> List.length
     |> fun x -> x - m * (List.length monster)
 
 [<EntryPoint>]
