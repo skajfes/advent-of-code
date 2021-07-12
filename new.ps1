@@ -22,3 +22,5 @@ popd
 cp Program.fs.template $Year/$p/Program.fs
 
 popd
+
+./add-input.ps1 $Year $Day
