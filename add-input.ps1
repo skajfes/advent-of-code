@@ -8,8 +8,14 @@ param(
 
 pushd $PSScriptRoot
 
+
 $session = $env:AOC_SESSION
 $p = "Day$($Day.ToString("00"))"
+
+if (-isnull $session) {
+	Write-Host "AOC_SESSION env variable is not set"
+	return
+}
 
 # download the file
 curl -HGET https://adventofcode.com/$Year/day/$Day/input -H "Cookie: session=$session" > $Year\$p\input.txt
