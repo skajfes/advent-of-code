@@ -12,7 +12,7 @@ pushd $PSScriptRoot
 $session = $env:AOC_SESSION
 $p = "Day$($Day.ToString("00"))"
 
-if (-isnull $session) {
+if ($session -eq $null) {
 	Write-Host "AOC_SESSION env variable is not set"
 	return
 }
