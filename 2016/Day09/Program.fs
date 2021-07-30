@@ -14,29 +14,6 @@ type Token =
     | Char
     | Empty
 
-let token input =
-    match Seq.tryHead input with
-    | Some '(' ->
-        let chars = Seq.takeWhile ((<>) 'x') (Seq.tail input) |> String.Concat
-        let count = input |> Seq.skip (2 + chars.Length) |> Seq.takeWhile ((<>)')') |> String.Concat
-
-        Repeat (int64 chars, int64 count), Seq.skip (Seq.length chars + Seq.length count + 3) input
-    | Some _ -> Char, Seq.tail input
-    | None -> Empty, Seq.empty
-
-
-let rec decompress2 recurse input =
-    match token input with
-    | Empty, _ -> 0L
-    | Char, rest -> 1L + decompress2 recurse rest
-    | Repeat (chars, count), rest ->
-        let sectionLength =
-            if recurse
-            then Seq.take (int chars) rest |> decompress2 recurse
-            else chars
-        (count * sectionLength) + decompress2 recurse (Seq.skip (int chars) rest)
-
-
 let rec decompress recurse input =
     match input with
     | Regex "^\((\d+)x(\d+)\)(.*)" [chars; repeat; rest] ->
@@ -56,7 +33,5 @@ let main argv =
 
     input |> decompress false |> printfn "Part 1: %d"
     input |> decompress true |> printfn "Part 2: %d"
-    input |> decompress2 false |> printfn "Part 1: %d"
-    input |> decompress2 true |> printfn "Part 2: %d"
 
     0 // return an integer exit code
