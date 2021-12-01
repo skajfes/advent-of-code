@@ -5,6 +5,7 @@
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Heap.fs" />
     <Compile Include="Program.fs" />
     <Content Include="sample.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
