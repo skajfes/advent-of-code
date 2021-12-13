@@ -1,6 +1,6 @@
 open System.IO
 
-let parse (input: string) = 
+let parse (input: string[]) = 
     input
 
 [<EntryPoint>]
