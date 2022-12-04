@@ -79,16 +79,20 @@ let score amphipod path =
     |> (fun x -> x * multiplier)
 
 let allPossiblePositions board (start, amphipod) =
+    let has item = List.contains item board
     match start with
     | x when x <= 6 ->
         match amphipod with
-        | 'A' -> [7; 8]
-        | 'B' -> [9; 10]
-        | 'C' -> [11; 12]
-        | 'D' -> [13; 14]
+        | 'A' when has (8, 'A') -> [7]
+        | 'A' -> [8]
+        | 'B' when has (10, 'B') -> [9]
+        | 'B' -> [10]
+        | 'C' when has (12, 'C') -> [11]
+        | 'C' -> [12]
+        | 'D' when has (14, 'D') -> [13]
+        | 'D' -> [14]
         | _ -> failwith "unknown amphipod"
     | x when x > 6 ->
-        let has item = List.contains item board
         match amphipod, start with
         | 'A', 8 -> []
         | 'A', 7 when has (8, 'A') -> []
@@ -201,7 +205,7 @@ let main argv =
     // let board = testInput |> parse
     // nextPositions board |> printfn "%A"
     // shortestPath board |> printfn "%A"
-    testInput |> parse |> shortestPath |> printfn "%A"
+    // testInput |> parse |> shortestPath |> printfn "%A"
 
     // input |> parse |> shortestPath |> printfn "Part 1: %A"
     // input |> parse |> part2 |> printfn "Part 2: %A"
