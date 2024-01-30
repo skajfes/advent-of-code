@@ -1,5 +1,5 @@
 open System
-open System.Collections.Generic
+open System.Diagnostics
 open System.IO
 
 let parse (input: string[]) = 
@@ -8,100 +8,52 @@ let parse (input: string[]) =
     |> Array.map (fun (n::ns) -> ns |> List.map (fun node -> [| n, node; |]) |> Array.ofList |> Array.concat)
     |> Array.concat
 
-// let numberOfPaths nodes =
-//
-//     let start = nodes |> Map.keys |> Seq.sortBy (fun x -> Random.Shared.Next()) |> Seq.head
-//
-//     let visited = HashSet<string>()
-//     let rec find todo paths =
-//         if todo = [] then
-//             printfn "%d" visited.Count
-//             paths else
-//
-//         let node::todo = todo
-//
-//         if visited.Contains(node) then find todo paths else
-//
-//         visited.Add(node) |> ignore
-//
-//         let ns =
-//             nodes
-//             |> Map.find node
-//             // |> Array.filter (fun x -> visited.Contains(x) |> not)
-//         let paths =
-//             ns
-//             |> Array.fold (fun paths node ->
-//                 match paths |> Map.tryFind node with
-//                 | None -> paths |> Map.add node 1
-//                 | Some l -> paths |> Map.add node (l + 1)
-//                 ) paths
-//
-//         find (todo @ (ns|>List.ofArray)) paths
-//
-//     find [start] Map.empty
-
-let rec contract nodes edges =
-    // printfn "%A\n%A" nodes (edges)
-    // Console.ReadKey() |> ignore
-    match Array.length nodes with
+let rec contract (nodes: Map<string, int>) (edges: (string * string) array) nodes_count =
+    match nodes_count with
     | 2 ->
-        let [|a; b|] = nodes
-        let res = Array.length edges, (String.length a) / 3, (String.length b) / 3
+        // printfn "%A" (nodes.Values )
+        let [|a; b|] = nodes.Values |> Seq.toArray
+        let res = (a, b), Array.length edges
         printfn "%A" res
         res
-    | n when edges = Array.empty -> 0, 8888, 8888
-    | n ->
-        // printfn "%d %d" (n) (edges.Length)
-        // let a, b = edges |> Array.countBy id |> Array.maxBy snd |> fst
-        // let a, b = edges[Random.Shared.Next(edges.Length)]
-        let groups = edges |> Array.countBy id
-        let max = groups |> Array.map snd |> Array.max
-        let maxGroup = groups |> Array.filter (snd >> (=)max) |> Array.map fst
-        let a, b = maxGroup[Random.Shared.Next(maxGroup.Length)]
-        // let edges = Array.tail edges
+    | _ ->
+        // pick random edge
+        let a, b = edges[Random.Shared.Next(edges.Length)]
 
         // replace node
+        let cnt = nodes[a] + nodes[b]
         let nodes =
             nodes
-            |> Array.filter (fun x -> x <> a && x <> b)
-            |> Array.append [| a+b |]
+            |> Map.add a cnt
+            |> Map.remove b
 
         let edges =
             edges
-            |> Array.filter (fun (a', b') -> (a, b) <> (a', b') && (a, b) <> (b', a'))
+            |> Array.filter (fun (a', b') -> (a <> a' || b <> b') && (a <> b' || b <> a'))
             |> Array.map (function
-                    | a', b' when a = a' -> a+b, b'
-                    | a', b' when a = b' -> a+b, a'
-                    | a', b' when b = a' -> a+b, b'
-                    | a', b' when b = b' -> a+b, a'
+                    | a', b' when a = a' -> a, b'
+                    | a', b' when a = b' -> a, a'
+                    | a', b' when b = a' -> a, b'
+                    | a', b' when b = b' -> a, a'
                     | a', b' -> a', b'
                     )
 
-        contract nodes edges
+        contract nodes edges (nodes_count - 1)
 
+let get_nodes edges =
+    edges
+    |> Array.collect (fun (a, b) -> [| a; b |])
+    |> Array.distinct
+    |> Array.map (fun x -> x, 1)
+    |> Map.ofArray
 
+let part1 (edges: (string*string) array) =
 
-
-let part1 edges =
-    // nodes
-    // |> Array.groupBy fst
-    // |> Array.map (fun (a, b) -> a, b |> Array.map snd)
-    // |> Map.ofArray
-    // |> numberOfPaths
-    // |> Map.iter (printfn "%s: %d")
-    // |> Map.toList
-    // |> List.groupBy snd
-    // |> List.map (fun (a, b) -> a, b |> List.length)
-    // |> List.partition (fst >> (>=) 4)
-    // |> fun (a, b) ->
-    //     (a |> List.length) , (b |> List.length), (a |> List.length) * (b |> List.length)
-    let nodes =
-        edges
-        |> Array.collect (fun (a, b) -> [| a; b |])
-        |> Array.distinct
-    [1..100]
-    |> List.map (fun _ -> contract nodes edges)
-    |> List.min
+    let ns = get_nodes edges
+    // try until a min cut of 3 is found
+    Seq.unfold (fun cut -> if cut=3 then None else contract ns edges (ns.Count) |> Some) 0
+    |> Seq.last
+    |> fun (a, b) -> a * b
 
 [<EntryPoint>]
 let main argv =
@@ -109,8 +61,10 @@ let main argv =
     let testInput = File.ReadAllLines("sample.txt")
     
     testInput |> parse |> part1 |> printfn "%A"
-    
+
+    let timer = Stopwatch.StartNew()
     input |> parse |> part1 |> printfn "Part 1: %A"
-    // input |> parse |> part2 |> printfn "Part 2: %A"
+    timer.Stop()
+    printfn "Executed in %A" timer.Elapsed
 
     0 // return an integer exit code
