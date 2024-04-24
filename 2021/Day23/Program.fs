@@ -1,8 +1,6 @@
-open System
 open System.Collections.Generic
 open System.IO
 
-// type Board = (int * char) list
 type Board = FSharp.HashCollections.HashMap<int*int, char>
 
 let parse (input: string[]) =
@@ -41,17 +39,6 @@ let parse2 (input: string[]) =
     |> List.map (fun (k, v) -> KeyValuePair(k, v))
     |> FSharp.HashCollections.HashMap.ofSeq
 
-// let maze1 =
-//     [(0, 0), "0"; (0, 1), "1"; (0, 2), "-1"; (0, 3), "2"; (0, 4), "-2"; (0, 5), "3"; (0, 6), "-3"; (0, 7), "4"; (0, 8), "-4"; (0, 9), "5"; (0, 10), "6";
-//                                 (1, 2), "7";              (1, 4), "9";              (1, 6), "11";             (1, 8), "13";
-//                                 (2, 2), "8";              (2, 4), "10";             (2, 6), "12";             (2, 8), "14"; ]
-
-// let maze2 =
-//     [(0, 0), "0"; (0, 1), "1"; (0, 2), "-1"; (0, 3), "2"; (0, 4), "-2"; (0, 5), "3"; (0, 6), "-3"; (0, 7), "4"; (0, 8), "-4"; (0, 9), "5"; (0, 10), "6";
-//                                 (1, 2), "7";              (1, 4), "9";              (1, 6), "11";             (1, 8), "13";
-//                                 (2, 2), "8";              (2, 4), "10";             (2, 6), "12";             (2, 8), "14";
-//                                 (3, 2), "15";             (3, 4), "16";             (3, 6), "17";             (3, 8), "18";
-//                                 (4, 2), "19";             (4, 4), "20";             (4, 6), "21";             (4, 8), "22" ]
 let maze1 =
     [(0, 0); (0, 1); (0, 2); (0, 3); (0, 4); (0, 5); (0, 6); (0, 7); (0, 8); (0, 9); (0, 10);
                      (1, 2);         (1, 4);         (1, 6);         (1, 8);
@@ -64,40 +51,6 @@ let maze2 = List.append maze1 [
                       (4, 2);         (4, 4);         (4, 6);         (4, 8); ]
 
 let firstRow = [(0, 0); (0, 1); (0, 3); (0, 5); (0, 7); (0, 9); (0, 10)]
-
-// let pathCache = Dictionary<int*int, int list>()
-// let getPath maze start stop =
-//
-//     let getPathImpl start stop =
-//         let mm p =
-//             maze |> List.filter (fst>>(=)p) |> List.head |> snd
-//
-//         let s = maze |> List.filter (snd >> (=)(string start)) |> List.head
-//         let e = maze |> List.filter (snd >> (=)(string stop)) |> List.head
-//         let xs = (fst >> fst) s
-//         let xe = (fst >> fst) e
-//         let ys = (fst >> snd) s
-//         let ye = (fst >> snd) e
-//
-//         if xs = xe then
-//             if ys = ye then []
-//             else [ys .. (if ye > ys then 1 else -1) .. ye] |> List.map (fun x -> 0, x)
-//         else
-//             let col = [ys .. (if ye > ys then 1 else -1) .. ye] |> List.map (fun x -> 0, x)
-//             let row = [xs .. (if xe > xs then 1 else -1) .. xe] |> List.map (fun x -> x, if xe > 0 then ye else ys)
-//             row @ col
-//
-//         |> List.map mm
-//         |> List.map int
-//         |> List.filter ((<>) start)
-//         |> List.distinct
-//
-//     if pathCache.ContainsKey(start, stop)
-//     then pathCache[start, stop]
-//     else
-//         let path = getPathImpl start stop
-//         pathCache.Add((start, stop), path)
-//         path
 
 let pathCache' = Dictionary<(int*int)*(int*int), (int*int) list>()
 let getPath' start stop =
@@ -224,14 +177,12 @@ let allPossiblePositions2 (board: Board) struct (start, amphipod) : ((Board * in
                                      |> FSharp.HashCollections.HashMap.remove start
                                      |> FSharp.HashCollections.HashMap.add pos amphipod), score amphipod path)
 
-let nextPositions maze (board: Board): ((Board*int) list) =
+let nextPositions allPossiblePositions maze (board: Board): ((Board*int) list) =
     board
     |> FSharp.HashCollections.HashMap.toSeq
     |> Seq.toList
-    |> List.collect (allPossiblePositions2 board)
+    |> List.collect (allPossiblePositions board)
 
-// let goal1 = [|(7, 'A'); (8, 'A'); (9, 'B'); (10, 'B'); (11, 'C'); (12, 'C'); (13, 'D'); (14, 'D'); |]
-// let goal2 = Array.append goal1 [|(7, 'A'); (8, 'A'); (9, 'B'); (10, 'B'); (11, 'C'); (12, 'C'); (13, 'D'); (14, 'D'); |]
 let goal1 =
     [| ((1, 2), 'A')
        ((2, 2), 'A')
@@ -256,7 +207,7 @@ let isDone goal (board: Board) =
     goal
     |> Array.forall (fun (k, v) -> board |> FSharp.HashCollections.HashMap.containsKey k && board.Item(k) = v)
 
-let shortestPath isDone (maze: (int*int)list) (board: Board) =
+let shortestPath isDone (maze: (int*int)list) (allPossiblePositions) (board: Board) =
     let visited = HashSet<Board>()
     let queue = PriorityQueue<int*Board, int>()
     queue.Enqueue((0, board), 0)
@@ -267,14 +218,14 @@ let shortestPath isDone (maze: (int*int)list) (board: Board) =
 
         if visited.Contains(board) then find() else
 
-        if cost > lastCost then
-            printfn "%d %d" (queue.Count) cost
-            lastCost <- cost
+        // if cost > lastCost then
+        //     printfn "%d %d" (queue.Count) cost
+        //     lastCost <- cost
 
         if isDone board then cost else
         visited.Add(board) |> ignore
 
-        nextPositions maze board
+        nextPositions allPossiblePositions maze board
         |> List.filter (fun (board, cost) -> visited.Contains(board) |> not)
         |> List.map (fun (board, c) -> c + cost, board)
         |> List.iter (fun item -> queue.Enqueue(item, fst item) )
@@ -287,15 +238,9 @@ let main argv =
     let input = File.ReadAllLines("input.txt")
     let testInput = File.ReadAllLines("sample.txt")
     
-    // testInput |> parse |> printfn "%A"
-    // let board = testInput |> parse
-    // nextPositions board |> printfn "%A"
-    // shortestPath board |> printfn "%A"
-    // testInput |> parse |> shortestPath |> printfn "%A"
-
-    // testInput |> parse |> shortestPath (isDone goal1) maze1 |> printfn "Test 1: %A"
-    // input |> parse |> shortestPath (isDone goal1) maze1 |> printfn "Part 1: %A"
-    // testInput |> parse2 |> shortestPath (isDone goal2) maze2 |> printfn "Test 2: %A"
-    input |> parse2 |> shortestPath (isDone goal2) maze2 |> printfn "Part2 2: %A"
+    testInput |> parse |> shortestPath (isDone goal1) maze1 allPossiblePositions |> printfn "Test 1: %A"
+    input |> parse |> shortestPath (isDone goal1) maze1 allPossiblePositions |> printfn "Part 1: %A"
+    testInput |> parse2 |> shortestPath (isDone goal2) maze2 allPossiblePositions2 |> printfn "Test 2: %A"
+    input |> parse2 |> shortestPath  (isDone goal2) maze2 allPossiblePositions2 |> printfn "Part2 2: %A"
 
     0 // return an integer exit code
