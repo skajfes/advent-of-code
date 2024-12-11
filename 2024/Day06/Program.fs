@@ -19,6 +19,7 @@ let parse (input: string[]) =
             | '#' -> Wall (r, c)
             | '^' -> Guard (r, c)
             | '.' -> Nothing
+            | _ -> failwith "nope"
         )
     )
     |> Seq.concat
@@ -28,9 +29,10 @@ let parse (input: string[]) =
         | Guard (r, c) -> walls, (r, c)
         | Nothing -> walls, guard
     ) ([], (0,0))
+    // return size of grid, position of walls and position of guard
     |> fun (walls, guard) -> n, walls, guard
 
-let guard_step walls (gr, gc) direction =
+let guard_step (walls: HashSet<int*int>) (gr, gc) direction =
     let g' =
         match direction with
         | Up -> gr - 1, gc
@@ -38,65 +40,63 @@ let guard_step walls (gr, gc) direction =
         | Left -> gr, gc - 1
         | Right -> gr, gc + 1
 
-    if List.contains g' walls then None else Some g'
+    if walls.Contains(g') then None else Some g'
 
-type Res = Inf | OOB of HashSet<(int*int)*Direction>
+let turn_right =
+    function
+    | Up -> Right
+    | Right -> Down
+    | Down -> Left
+    | Left -> Up
 
-let rec guard_walk n walls g dir (path: HashSet<(int*int)*Direction>) =
-    match guard_step walls g dir with
-    | Some (gr, gc) when gr < 0 || gc < 0 || gr >= n || gc >= n -> OOB path
-    | Some g' when path.Contains(g', dir) -> Inf
-    | Some g' ->
-        path.Add(g', dir) |> ignore
-        guard_walk n walls g' dir path
-    | None ->
-        match dir with
-        | Up -> Right
-        | Right -> Down
-        | Down -> Left
-        | Left -> Up
-        |> fun dir -> guard_walk n walls g dir path
-
-let part1 (n, walls: (int*int)list, guard:int*int) =
-    match guard_walk n walls guard Up (HashSet<(int*int)*Direction>()) with
-    | OOB path ->
+let find_guard_path n walls g =
+    let path = HashSet<(int*int)*Direction>()
+    let rec find g dir =
+        match guard_step walls g dir with
+        | Some (gr, gc) when gr < 0 || gc < 0 || gr >= n || gc >= n -> Some path
+        | Some g' when path.Contains(g', dir) -> None
+        | Some g' ->
+            path.Add(g', dir) |> ignore
+            find g' dir
+        | None -> find g (turn_right dir)
+    match find g Up with
+    | Some path ->
         path
         |> Seq.toList
         |> List.map fst
         |> List.distinct
-        |> List.length
+    | _ -> failwith "no path"
 
-let part2 (n, walls: (int*int)list, guard:int*int) =
-    let path =
-        match guard_walk n walls guard Up (HashSet<(int*int)*Direction>()) with
-        | OOB path ->
-            path
-            |> Seq.toList
-            |> List.map fst
-            |> List.distinct
+// don't track path walked to detect infinite route, only count,
+// assume if path long enough it's infinite
+let find_inf_path n walls g =
+    let rec find g dir len =
+        match guard_step walls g dir with
+        | Some (gr, gc) when gr < 0 || gc < 0 || gr >= n || gc >= n -> 0
+        | Some _ when len > 5700 -> 1
+        | Some g' -> find g' dir (len + 1)
+        | None -> find g (turn_right dir) (len + 1)
 
-    path
-    |> List.map (fun (r, c) -> [r-1, c; r+1,c; r, c-1; r,c+1])
-    |> List.concat
-    |> List.distinct
-    |> List.sort
-    // [for r in 0..n-1 do for c in 0..n-1 -> r,c] // all coords
-    |> List.mapi (fun i w ->
-        if i % 100 = 0 then printfn "%d %A" i w
-        guard_walk n (w::walls) guard Up (HashSet<(int*int)*Direction>()))
-    |> List.filter (function Inf -> true | _ -> false)
+    find g Up 0
+
+let part1 (n, walls: (int*int)list, guard:int*int) =
+    find_guard_path n (HashSet(walls)) guard
     |> List.length
 
+let part2 (n, walls: (int*int)list, guard:int*int) =
+    // Try adding wall on every step of path
+    find_guard_path n (HashSet(walls)) guard
+    |> List.sumBy (fun w -> find_inf_path n (HashSet(w::walls)) guard)
 
 [<EntryPoint>]
 let main argv =
     let input = File.ReadAllLines("input.txt")
     let testInput = File.ReadAllLines("sample.txt")
     
-    // testInput |> parse |> part1 |> printfn "%A"
+    testInput |> parse |> part1 |> printfn "%A"
     testInput |> parse |> part2 |> printfn "%A"
 
-    // input |> parse |> part1 |> printfn "Part 1: %A"
+    input |> parse |> part1 |> printfn "Part 1: %A"
     input |> parse |> part2 |> printfn "Part 2: %A"
 
     0 // return an integer exit code
