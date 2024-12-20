@@ -1,3 +1,4 @@
+open System.Collections.Generic
 open System.IO
 
 type Maze =
@@ -24,58 +25,54 @@ let parse (input: string[]) =
         | Start foo -> foo, stop, foo::path
         | End foo -> start, foo, foo::path
         | Wall -> start, stop, path) ((0,0), (0,0), [])
+    |> fun (start, stop, path) -> start, stop, HashSet(path)
 
 let neighbours (r, c) =
     [ (r+1, c); (r-1, c); (r, c-1); (r, c+1) ]
 
-let walk start stop path =
+let walk start stop (path: HashSet<int*int>) =
     let rec loop current visited =
         let next =
             neighbours current
-            |> List.filter (fun c -> visited |> List.contains c |> not)
-            |> List.filter (fun c -> List.contains c path)
+            |> List.filter path.Contains
+
+        let next =
+            match List.tryHead visited with
+            | None -> next
+            | Some v -> next |> List.filter (fun c -> c <> v)
+
+        let visited = current::visited
 
         match next with
-        | [next] when next = stop -> next::visited |> List.rev
-        | [next] -> loop next (next::visited)
+        | [next] when next = stop -> next::visited |> List.rev |> List.toArray
+        | [next] -> loop next visited
         | _ -> failwith "nope"
 
-    loop start [start]
+    loop start []
 
 let by_length max_cheat path (ei, (er, ec)) =
     path
-    |> List.filter (fun (i, _) -> i < ei) // look at next points in path
-    |> List.map (fun (i, (r, c)) -> i, (abs (er - r) + abs (ec - c))) // calculate distance to point
-    |> List.filter (fun (i, d) -> d <= max_cheat) // where distance less than max_cheat
-    |> List.map (fun (i, d) -> abs (i - ei) - d) // calculate saved steps
+    |> Array.fold (fun cnt (i, (r, c)) ->
+        if ei >= i then cnt else
+        let d = abs (er - r) + abs (ec - c)
+        if d > max_cheat then cnt else
+        if abs (i - ei) - d >= 100
+        then cnt + 1
+        else cnt
+    ) 0
 
-let find_shortest length (path: (int*int)list) =
-    let indexed = path |> List.indexed
-    indexed
-    |> List.map (by_length length indexed)
-    |> List.concat
-    |> List.filter ((<)0)
-
-let find_distances length (start, stop, path)  =
+let find_distances_saved max_cheat (start, stop, path)  =
     walk start stop path
-    |> find_shortest length
-    |> List.groupBy id
-    |> List.map (fun (i, l) -> i, List.length l)
-    |> List.sort
-
-let find_distances_saved length (start, stop, path)  =
-    walk start stop path
-    |> find_shortest length
-    |> List.filter ((<=)100)
-    |> List.sum
+    |> Array.indexed
+    |> fun i -> i |> Array.sumBy (by_length max_cheat i)
 
 [<EntryPoint>]
 let main argv =
     let input = File.ReadAllLines("input.txt")
     let testInput = File.ReadAllLines("sample.txt")
     
-    testInput |> parse |> find_distances 2 |> printfn "%A"
-    testInput |> parse |> find_distances 20 |> printfn "%A"
+    // testInput |> parse |> find_distances 2 |> printfn "%A"
+    // testInput |> parse |> find_distances 20 |> printfn "%A"
 
     input |> parse |> find_distances_saved 2 |> printfn "Part 1: %A"
     input |> parse |> find_distances_saved 20 |> printfn "Part 2: %A"
