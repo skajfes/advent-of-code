@@ -51,33 +51,33 @@ let part1 (wires, rules) =
     compile rules // compile the rules to a function that calculates the value of a wire
     |> execute wires
 
-let add wires =
-    // get x wires to binary
-    // get y wires to binary
-    // x + y
-    0
+let rec to_binary bits x =
+    if bits = 0 then [] else
+        (x%2L = 1L) :: to_binary (bits - 1) (x/2L)
 
-let swap_pairs rules =
-    seq {
-        // swap any two pairs of rules
-        // yield all the rule sets
-    }
+let to_wires bits x y =
+    []
+    |> List.append (to_binary bits x |> List.mapi (fun i v -> sprintf "x%02d" i, v))
+    |> List.append (to_binary bits y |> List.mapi (fun i v -> sprintf "y%02d" i, v))
 
 let part2 (wires, rules) =
-    rules
-    |> compile
-    |> execute wires
-    // |> swap_pairs
-    // |> Seq.map (compile >> execute wires)
+    let f = compile rules
+    [0..44]
+    |> List.map (fun i -> i, 1L<<<i)
+    |> List.map (fun (i, j) -> i, j, execute (to_wires 45 0L j) f)
+    |> List.filter (fun (i, j, v) -> j <> v)
+    |> List.map (fun (i, j, v) -> i)
 
 [<EntryPoint>]
 let main argv =
     let input = File.ReadAllLines("input.txt")
     let testInput = File.ReadAllLines("sample.txt")
     
-    testInput |> parse |> part1 |> printfn "%A"
+    // input |> parse |> part2 |> printfn "%A"
     
     input |> parse |> part1 |> printfn "Part 1: %d"
-    // input |> parse |> part2 |> printfn "Part 2: %A"
+    input |> parse |> part2 |> printfn "Part 2: %A"
+    // part2 prints which bits are off,
+    // render adders in mermaid graph and analyze the circuit to see which wires are swapped
 
     0 // return an integer exit code
