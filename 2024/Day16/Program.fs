@@ -1,5 +1,5 @@
-open System
 open System.Collections.Generic
+open System.Diagnostics
 open System.IO
 
 let parse (input: string[]) = 
@@ -9,15 +9,15 @@ let parse (input: string[]) =
     |> Seq.concat
     |> Seq.fold (fun (start, stop, path) (c, cell)->
         match cell with
-        | '.' -> start, stop, c::path
-        | 'S' -> c, stop, c::path
-        | 'E' -> start, c, c::path
+        | '.' -> start, stop, Set.add c path
+        | 'S' -> c, stop, Set.add c path
+        | 'E' -> start, c, Set.add c path
         | _ -> start, stop, path
-        ) ((0, 0), (0, 0), [])
+        ) ((0, 0), (0, 0), Set.empty)
 
 type Direction = Up | Down | Left | Right
 
-let ns (r, c) dir =
+let neighbours (r, c) dir =
     match dir with
     | Up -> [
         1, (r - 1, c), Up
@@ -40,53 +40,58 @@ let ns (r, c) dir =
         1000, (r, c), Down
         ]
 
-let walk (start, stop, path) =
+let opposite =
+    function
+    | Up -> Down
+    | Down -> Up
+    | Left -> Right
+    | Right -> Left
 
+let walk ((start, start_dir), (stop, stop_dir), path) =
+
+    let mutable map = Dictionary<_ ,_>()
     let visited = HashSet<(int * int) * Direction>()
-    let map = Dictionary<(int * int) * Direction, int*(int*int)list>()
-    map.Add((start, Right), (0, []))
 
-    let rec do_walk (queue: PriorityQueue<int * (int * int) * Direction * (int*int*Direction) list, int>) =
-        let steps, pos, dir, tiles = queue.Dequeue()
+    let rec do_walk (queue: PriorityQueue<int * (int * int) * Direction, int>) =
+        let steps, pos, dir = queue.Dequeue()
 
-        if map.ContainsKey(pos, dir) then
-            let s, p = map[pos, dir]
-            if s = steps then
-                map.Remove((pos, dir)) |> ignore
-                map.Add((pos, dir), (s, p |> List.append (tiles |> List.map (fun (a, b, c) -> a, b))))
+        if pos = stop && (stop_dir = None || stop_dir = Some dir) then
+            map.Add((pos, dir), steps)
+            steps, map
         else
-            map.Add((pos, dir), (steps, tiles |> List.map (fun (a, b, c) -> a, b)))
-
-        if pos = stop then
-            tiles
-            |> List.collect (fun (r, c, d) -> map[(r, c), d] |> snd)
-            |> List.distinct
-            |> List.length
-        else
-
 
         if visited.Contains(pos, dir) then do_walk queue else
         visited.Add(pos, dir) |> ignore
+        map.Add((pos, dir), steps)
 
-        let ns' =
-            ns pos dir
-            |> List.filter (fun (s, p, d) -> path |> List.contains p)
-
-        printfn "In %d %A %A %A" steps pos dir ns'
-        // Console.ReadKey() |> ignore
-
-        ns'
+        neighbours pos dir
+        |> List.filter (fun (s, p, d) -> Set.contains p path)
         |> List.iter (fun (s, (r, c), d) ->
-            queue.Enqueue((steps + s, (r, c), d, (r, c, d)::tiles), steps + s))
+            queue.Enqueue((steps + s, (r, c), d), steps + s))
         do_walk queue
 
-    let queue = PriorityQueue<int * (int * int) * Direction * (int * int * Direction) list, int>()
-    queue.Enqueue((0, start, Right, []), 0)
+    let queue = PriorityQueue<int * (int * int) * Direction, int>()
+    queue.Enqueue((0, start, start_dir), 0)
     do_walk queue
 
 
 let part1 (start, stop, path) =
-    walk (start, stop, path)
+    walk ((start, Right), (stop, None), path) |> fst
+
+let part2 (start, stop, path) =
+    // walk from start to stop
+    let steps, dist = walk ((start, Right), (stop, None), path)
+    // walk from stop to start, take optimal stop direction
+    let stop_dir = dist.Keys |> Seq.filter (fun ((r, c), d) -> (r, c) = stop) |> Seq.minBy (fun k -> dist[k]) |> snd
+    let _, dist_end = walk ((stop, opposite stop_dir), (start, Some Right), path)
+
+    // find all points that are on the optimal path (steps from start + steps from stop = min steps)
+    dist_end
+    |> Seq.fold (fun res kv ->
+        let p, d = kv.Key
+        if kv.Value + dist.GetValueOrDefault((p, opposite d)) = steps then res |> Set.add p else res) Set.empty
+    |> Set.count
+
 
 [<EntryPoint>]
 let main argv =
@@ -94,8 +99,9 @@ let main argv =
     let testInput = File.ReadAllLines("sample.txt")
     
     testInput |> parse |> part1 |> printfn "%A"
-    
+    testInput |> parse |> part2 |> printfn "%A"
+
     input |> parse |> part1 |> printfn "Part 1: %A"
-    // input |> parse |> part2 |> printfn "Part 2: %A"
+    input |> parse |> part2 |> printfn "Part 2: %A"
 
     0 // return an integer exit code
