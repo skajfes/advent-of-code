@@ -23,6 +23,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Day09", "Day09\Day09.fsproj
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Day10", "Day10\Day10.fsproj", "{7FB63F8C-4B72-4447-912F-222BCDA4E523}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Day11", "Day11\Day11.fsproj", "{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,18 @@ Global
 		{7FB63F8C-4B72-4447-912F-222BCDA4E523}.Release|x64.Build.0 = Release|Any CPU
 		{7FB63F8C-4B72-4447-912F-222BCDA4E523}.Release|x86.ActiveCfg = Release|Any CPU
 		{7FB63F8C-4B72-4447-912F-222BCDA4E523}.Release|x86.Build.0 = Release|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Debug|x64.Build.0 = Debug|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Debug|x86.Build.0 = Debug|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Release|x64.ActiveCfg = Release|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Release|x64.Build.0 = Release|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Release|x86.ActiveCfg = Release|Any CPU
+		{ECA18A44-E1E8-44B8-9DE3-0CDBFFF0A325}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
